@@ -322,8 +322,47 @@ with tabs[4]:
     if "media_ppt_bytes" not in st.session_state:
         st.session_state.media_ppt_bytes = None
     if "media_pdf_bytes" not in st.session_state:
-        st.session_state.media_pdf_bytes = None
+    st.session_state.media_pdf_bytes = None
 
+# 👇 여기 추가
+with st.expander("📚 저장된 회의·발표 분석", expanded=False):
+    saved_projects = list_media_projects(USER_ID)
+
+    if not saved_projects:
+        st.info("저장된 회의·발표 분석이 없습니다.")
+    else:
+        project_options = {
+            f"{item['title']} · {item.get('created_at', '')[:10]}": item["id"]
+            for item in saved_projects
+        }
+
+        selected_project = st.selectbox(
+            "불러올 분석",
+            options=list(project_options.keys()),
+            key="media_saved_project_select"
+        )
+
+        if st.button("📂 불러오기", use_container_width=True, key="btn_media_load_project"):
+            project = load_media_project(
+                USER_ID,
+                project_options[selected_project]
+            )
+
+            if project:
+                analysis = project.get("analysis") or {}
+
+                st.session_state.media_project_id = project["id"]
+                st.session_state.media_analysis = analysis
+                st.session_state.media_transcript = project.get("transcript") or analysis.get("transcript", "")
+                st.session_state.media_ppt_bytes = None
+                st.session_state.media_pdf_bytes = None
+
+                st.success("저장된 분석을 불러왔습니다.")
+                st.rerun()
+            else:
+                st.warning("저장된 분석을 불러오지 못했습니다.")
+
+# 디자인
     # 디자인
     st.markdown("""
     <style>
