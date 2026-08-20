@@ -1,9 +1,1 @@
-google-genai>=1.0.0
-gradio>=4.0.0
-pandas>=2.0.0
-openpyxl>=3.1.0
-pypdf>=4.0.0
-streamlit>=1.35.0
-python-dotenv>=1.0.0
-python-pptx>=1.0.2
-reportlab>=4.2.0
+
