@@ -13,7 +13,6 @@ import re
 from google.genai import types
 from modules.ai_client import get_ai_response
 from modules.todo_manager import add_todo, get_todos, complete_todo, delete_todo
-from modules.job_tracker import add_job, get_jobs, update_job_status
 
 st.set_page_config(
     page_title="나만의 AI 비서 🤖",
@@ -85,7 +84,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-tabs = st.tabs(["✉️ 이메일 작성", "✅ 할 일 관리", "📊 데이터 분석", "💼 채용 관리", "🎙️ 회의·발표 분석"])
+tabs = st.tabs(["✉️ 이메일 작성", "✅ 할 일 관리", "📊 데이터 분석", "🎙️ 회의·발표 분석"])
 
 # ─────────────────────────────────────────
 # 탭 1: 이메일 작성 (PDF / 공문 변환)
@@ -271,40 +270,10 @@ with tabs[2]:
     else:
         st.info("분석할 CSV 또는 Excel 파일을 업로드해주세요.")
 
-# ─────────────────────────────────────────
-# 탭 4: 채용 관리
-# ─────────────────────────────────────────
+# =========================================================
+# 탭 4 : 회의·발표 분석
+# =========================================================
 with tabs[3]:
-    st.markdown("### 💼 채용 관리")
-    st.write("관심 기업 및 지원 현황을 한눈에 관리하세요!")
-    
-    jcol1, jcol2 = st.columns([1, 2], gap="large")
-    with jcol1:
-        st.markdown("**➕ 새 채용 정보 추가**")
-        j_company = st.text_input("기업명", placeholder="예: 카카오", key="input_job_company")
-        j_pos = st.text_input("직무", placeholder="예: 데이터 분석가", key="input_job_position")
-        j_stat = st.selectbox("현재 상태", ["지원 예정", "서류 지원", "서류 합격", "면접 예정", "면접 완료", "최종 합격", "불합격"], key="select_job_status")
-        j_dead = st.text_input("마감일", placeholder="예: 2026-08-30", key="input_job_deadline")
-        j_note = st.text_area("메모", placeholder="연봉, 복지, 전형 특이사항 등...", height=100, key="textarea_job_note")
-        if st.button("➕ 채용 정보 등록", type="primary", use_container_width=True, key="btn_add_job"):
-            if j_company.strip() and j_pos.strip():
-                msg = add_job(USER_ID, j_company, j_pos, j_stat, j_dead, j_note)
-                st.success(msg)
-                st.rerun()
-            else:
-                st.warning("기업명과 직무를 입력해주세요.")
-
-    with jcol2:
-        jobs = get_jobs(USER_ID)
-        if jobs:
-            df_jobs = pd.DataFrame(jobs, columns=["ID", "기업명", "직무", "상태", "마감일", "메모"])
-            st.dataframe(df_jobs, use_container_width=True, hide_index=True)
-        else:
-            st.info("등록된 채용 정보가 없습니다.")
-# =========================================================
-# 탭 5 : 회의·발표 분석
-# =========================================================
-with tabs[4]:
     import html
     import pandas as pd
     from modules.media_report import analyze_media, rebuild_from_transcript, build_pptx, build_pdf
