@@ -159,7 +159,7 @@ with tabs[1]:
         todo_title = st.text_input("할 일 제목", placeholder="예: 이력서 업데이트")
         todo_due = st.text_input("마감일 (선택)", placeholder="예: 2026-08-30")
         todo_priority = st.radio("우선순위", ["높음", "보통", "낮음"], index=1, horizontal=True)
-        if st.button("➕ 추가", type="primary", use_container_width=True):
+        if st.button("➕ 할 일 추가", type="primary", use_container_width=True, key="btn_add_todo"):
             if todo_title.strip():
                 msg = add_todo(todo_title, todo_due, todo_priority)
                 st.success(msg)
@@ -169,21 +169,21 @@ with tabs[1]:
 
         st.markdown("---")
         st.markdown("**🔧 완료 / 삭제**")
-        todo_id = st.number_input("처리할 항목 ID", min_value=1, step=1)
+        todo_id = st.number_input("처리할 항목 ID", min_value=1, step=1, key="input_todo_id")
         bcol1, bcol2 = st.columns(2)
         with bcol1:
-            if st.button("✅ 완료 처리", use_container_width=True):
+            if st.button("✅ 완료 처리", use_container_width=True, key="btn_complete_todo"):
                 msg = complete_todo(todo_id)
                 st.success(msg)
                 st.rerun()
         with bcol2:
-            if st.button("🗑️ 삭제", use_container_width=True):
+            if st.button("🗑️ 삭제", use_container_width=True, key="btn_delete_todo"):
                 msg = delete_todo(todo_id)
                 st.success(msg)
                 st.rerun()
 
     with tcol2:
-        show_all = st.checkbox("완료된 항목도 보기")
+        show_all = st.checkbox("완료된 항목도 보기", key="chk_show_all_todos")
         todos = get_todos(show_completed=show_all)
         if todos:
             df_todos = pd.DataFrame(todos, columns=["ID", "할 일", "마감일", "우선순위", "완료여부"])
@@ -198,7 +198,7 @@ with tabs[1]:
 with tabs[2]:
     st.markdown("### 📊 데이터 분석")
     st.write("CSV / Excel 파일을 올리면 AI가 데이터를 분석해 드려요!")
-    data_file = st.file_uploader("📁 파일 업로드 (.csv / .xlsx / .xls)", type=["csv", "xlsx", "xls"])
+    data_file = st.file_uploader("📁 파일 업로드 (.csv / .xlsx / .xls)", type=["csv", "xlsx", "xls"], key="uploader_data_file")
     if data_file is not None:
         try:
             if data_file.name.endswith(".csv"):
@@ -209,8 +209,8 @@ with tabs[2]:
             st.write(f"📊 **데이터 기본 정보**: 행 {len(df):,}개 | 열 {len(df.columns)}개 ({', '.join(df.columns.tolist())})")
             st.dataframe(df.head(20), use_container_width=True)
 
-            data_q = st.text_input("❓ 궁금한 점 (선택)", placeholder="예: 매출이 가장 높은 달은? 어떤 상품이 제일 잘 팔려?")
-            if st.button("📊 분석해줘!", type="primary"):
+            data_q = st.text_input("❓ 궁금한 점 (선택)", placeholder="예: 매출이 가장 높은 달은? 어떤 상품이 제일 잘 팔려?", key="input_data_question")
+            if st.button("📊 분석해줘!", type="primary", key="btn_analyze_data"):
                 with st.spinner("AI가 데이터를 분석 중입니다..."):
                     sample_text = df.head(30).to_string()
                     prompt = f"""다음 데이터를 분석해주세요.
@@ -240,12 +240,12 @@ with tabs[3]:
     jcol1, jcol2 = st.columns([1, 2], gap="large")
     with jcol1:
         st.markdown("**➕ 새 채용 정보 추가**")
-        j_company = st.text_input("기업명", placeholder="예: 카카오")
-        j_pos = st.text_input("직무", placeholder="예: 데이터 분석가")
-        j_stat = st.selectbox("현재 상태", ["지원 예정", "서류 지원", "서류 합격", "면접 예정", "면접 완료", "최종 합격", "불합격"])
-        j_dead = st.text_input("마감일", placeholder="예: 2026-08-30")
-        j_note = st.text_area("메모", placeholder="연봉, 복지, 전형 특이사항 등...", height=100)
-        if st.button("➕ 추가", type="primary", use_container_width=True):
+        j_company = st.text_input("기업명", placeholder="예: 카카오", key="input_job_company")
+        j_pos = st.text_input("직무", placeholder="예: 데이터 분석가", key="input_job_position")
+        j_stat = st.selectbox("현재 상태", ["지원 예정", "서류 지원", "서류 합격", "면접 예정", "면접 완료", "최종 합격", "불합격"], key="select_job_status")
+        j_dead = st.text_input("마감일", placeholder="예: 2026-08-30", key="input_job_deadline")
+        j_note = st.text_area("메모", placeholder="연봉, 복지, 전형 특이사항 등...", height=100, key="textarea_job_note")
+        if st.button("➕ 채용 정보 등록", type="primary", use_container_width=True, key="btn_add_job"):
             if j_company.strip() and j_pos.strip():
                 msg = add_job(j_company, j_pos, j_stat, j_dead, j_note)
                 st.success(msg)
