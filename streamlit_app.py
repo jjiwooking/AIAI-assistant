@@ -44,6 +44,24 @@ def clean_email_text(text: str) -> str:
 st.markdown('<div class="main-title">🤖 나만의 AI 비서</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title"><i>이메일 작성 · 할 일 관리 · 데이터 분석 · 채용 관리</i></div>', unsafe_allow_html=True)
 
+# ─────────────────────────────────────────
+# 📌 메인 화면: 진행 중인 할 일 브리핑
+# ─────────────────────────────────────────
+pending_todos = get_todos(show_completed=False)
+if pending_todos:
+    with st.expander(f"📌 **오늘 해야 할 일 ({len(pending_todos)}건 진행 중)**", expanded=True):
+        cols = st.columns(min(len(pending_todos), 3))
+        for idx, (t_id, t_title, t_due, t_pri, _) in enumerate(pending_todos):
+            c = cols[idx % min(len(pending_todos), 3)]
+            pri_badge = "🔴 높음" if t_pri == "높음" else ("🟡 보통" if t_pri == "보통" else "🟢 낮음")
+            due_badge = f"마감: {t_due}" if t_due else "기한 없음"
+            with c:
+                st.info(f"**{t_title}**\n\n`{pri_badge}` · `{due_badge}` · `ID: {t_id}`")
+else:
+    st.success("🎉 **현재 진행 중인 할 일이 모두 완료되었습니다!** (새로운 할 일은 '✅ 할 일 관리' 탭에서 등록하세요)")
+
+st.markdown("<br>", unsafe_allow_html=True)
+
 tabs = st.tabs(["✉️ 이메일 작성", "✅ 할 일 관리", "📊 데이터 분석", "💼 채용 관리"])
 
 # ─────────────────────────────────────────
