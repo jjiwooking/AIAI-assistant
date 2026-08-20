@@ -233,50 +233,166 @@ def render_home(user_id):
 # 이메일 작성
 # =========================================================
 def render_email_tab():
-    st.markdown(f"### {t('email_title', '📄 PDF 메일 작성!')}")
-    left, right = st.columns(2, gap="large")
+    st.markdown(f"### {t('email_title', '✉️ AI 비즈니스 이메일 작성')}")
+    st.caption(
+        t(
+            "email_description",
+            "PDF/문서를 올리거나 짧은 메모만 입력해도 상황에 맞는 정식 비즈니스 이메일로 작성합니다."
+        )
+    )
+
+    left, right = st.columns([1.05, 0.95], gap="large")
 
     with left:
+        st.markdown("#### 1. 원문 / 상황 입력")
+
         uploaded_file = st.file_uploader(
-            t("email_upload_label", "📄 PDF 또는 문서 파일 업로드 (선택)"),
+            t("email_upload_label", "📎 PDF 또는 참고 문서 업로드 (선택)"),
             type=["pdf", "txt", "csv", "png", "jpg", "jpeg", "webp"],
             key="email_file_uploader"
         )
 
         situation = st.text_area(
-            t("email_situation_label", "📝 상황 설명 / 공문 본문 / 추가 지시사항"),
-            placeholder=t("email_situation_placeholder", "예: 거래처에 계약서 서명 요청 메일을 정중하게 작성"),
-            height=140
+            t("email_situation_label", "📝 메일로 만들 내용"),
+            placeholder=t(
+                "email_situation_placeholder",
+                "예: T131 일정이 촉박해서 먼저 보냈고, 나머지 Batch는 데이터 준비되는 대로 추가 송부 예정이라고 고객에게 알려줘"
+            ),
+            height=180,
+            help="완성된 문장일 필요 없습니다. 핵심 내용만 메모처럼 적어도 됩니다."
         )
 
-        tone_values = ["formal", "summary", "internal", "customer", "friendly", "concise", "apology"]
-        tone_labels = {
-            "formal": t("email_tone_formal", "공식적·정중하게"),
-            "summary": t("email_tone_summary", "📜 공문/안내문 → 핵심 요약 전달 메일"),
-            "internal": t("email_tone_internal", "🏢 사내/팀 공지 메일"),
-            "customer": t("email_tone_customer", "🤝 거래처/고객사 협조 요청"),
-            "friendly": t("email_tone_friendly", "친근하고 부드럽게"),
-            "concise": t("email_tone_concise", "간결하게 (핵심만)"),
-            "apology": t("email_tone_apology", "사과/양해 구하기"),
+        st.markdown("#### 2. 메일 스타일 설정")
+
+        output_language = st.selectbox(
+            t("email_language_label", "🌐 출력 언어"),
+            [
+                "영어",
+                "한국어",
+                "한국어 + 영어 병기"
+            ],
+            index=0,
+            key="email_output_language"
+        )
+
+        expertise_options = {
+            "일반 비즈니스": (
+                "일반적인 글로벌 비즈니스 이메일 문체를 사용합니다. "
+                "자연스럽고 정중하며 지나치게 장황하지 않게 작성합니다."
+            ),
+            "마케팅·세일즈": (
+                "고객 관계, 제안, 설득, 후속 대응, 일정 조율에 적합한 "
+                "마케팅·세일즈 커뮤니케이션 어휘와 문장을 사용합니다."
+            ),
+            "반도체·기술": (
+                "반도체 장비, 공정, 부품, 기술 이슈, Troubleshooting, "
+                "Conversion, Retrofit, Qualification, Evaluation, Data, Alarm, "
+                "Part List 등 엔지니어링 현업 문맥을 정확히 반영합니다. "
+                "모델명, 장비명, 파트명, 약어는 임의로 바꾸지 않습니다."
+            ),
+            "무역·물류": (
+                "Quotation, PO, Lead Time, Delivery, Shipment, ETD/ETA, "
+                "Invoice, Packing List, Customs Clearance, Courier, Forwarder, "
+                "Incoterms 등 무역·물류 실무 표현을 정확하게 사용합니다."
+            )
         }
-        tone_key = st.radio(
-            t("email_tone_label", "🎭 톤 및 변환 목적"),
-            tone_values, index=0, format_func=lambda value: tone_labels[value]
+
+        expertise_modes = st.multiselect(
+            t("email_expertise_label", "🧩 업무 전문 모드 (복수 선택 가능)"),
+            list(expertise_options.keys()),
+            default=["일반 비즈니스"],
+            help="예: '일반 비즈니스 + 반도체·기술 + 무역·물류'처럼 동시에 선택할 수 있습니다.",
+            key="email_expertise_modes"
         )
-        additional = st.text_input(
+
+        purpose_options = [
+            "자동 판단",
+            "고객사 회신 / 안내",
+            "협조 요청",
+            "일정 / 납기 안내",
+            "기술 이슈 보고 / 문의",
+            "견적 / PO / 구매 관련",
+            "출하 / 통관 / 물류 관련",
+            "자료 / 데이터 송부",
+            "Follow-up / Reminder",
+            "사과 / 양해 요청",
+            "사내 보고 / 공유"
+        ]
+
+        purpose = st.selectbox(
+            t("email_purpose_label", "🎯 메일 목적"),
+            purpose_options,
+            index=0,
+            key="email_purpose"
+        )
+
+        recipient_options = [
+            "자동 판단",
+            "고객사",
+            "협력사 / 공급사",
+            "해외 지사 / 법인",
+            "사내 동료",
+            "상사 / 경영진"
+        ]
+
+        recipient = st.selectbox(
+            t("email_recipient_label", "👤 수신 대상"),
+            recipient_options,
+            index=0,
+            key="email_recipient"
+        )
+
+        tone_options = {
+            "정중하고 전문적으로": "formal",
+            "간결하고 명확하게": "concise",
+            "부드럽고 협조적으로": "cooperative",
+            "조금 더 격식 있게": "executive",
+            "긴급하지만 예의 있게": "urgent"
+        }
+
+        tone_label = st.selectbox(
+            t("email_tone_label", "🎭 문체"),
+            list(tone_options.keys()),
+            index=0,
+            key="email_tone"
+        )
+
+        additional = st.text_area(
             t("email_additional_label", "➕ 추가 요청 (선택)"),
-            placeholder=t("email_additional_placeholder", "예: 마감일 강조 / 3줄 요약 포함 / 영문 번역 병기")
+            placeholder=t(
+                "email_additional_placeholder",
+                "예: The reason why로 시작 / 다음 주 초 제공 예정이라고 표현 / 너무 길지 않게 / 제목도 3개 추천"
+            ),
+            height=90,
+            key="email_additional"
         )
+
         generate = st.button(
-            t("email_generate_button", "✉️ 이메일 자동 생성 / PDF 변환"),
-            type="primary", use_container_width=True, key="email_generate_button"
+            t("email_generate_button", "✨ 정식 이메일로 작성"),
+            type="primary",
+            use_container_width=True,
+            key="email_generate_button"
         )
 
     with right:
-        st.markdown(f"**{t('email_result_title', '📨 완성된 이메일')}**")
+        st.markdown(f"#### {t('email_result_title', '📨 완성된 이메일')}")
 
         if not generate:
-            st.info(t("email_empty_guide", "왼쪽에서 PDF 파일을 올리거나 내용을 입력한 뒤 이메일 생성 버튼을 눌러주세요."))
+            st.info(
+                t(
+                    "email_empty_guide",
+                    "왼쪽에 짧은 메모를 입력하거나 PDF/문서를 첨부한 뒤 '정식 이메일로 작성'을 눌러주세요."
+                )
+            )
+
+            st.markdown("##### 사용 예시")
+            st.code(
+                "T131 일정 촉박해서 먼저 보냈고 나머지 batch는 data 준비되는대로 추가 송부 예정이라고 알려줘",
+                language=None
+            )
+            st.caption(
+                "→ 일반 비즈니스 + 반도체·기술을 선택하면 고객사에 바로 보낼 수 있는 자연스러운 영문 메일로 변환됩니다."
+            )
             return
 
         contents = []
@@ -287,47 +403,126 @@ def render_email_tab():
             name = uploaded_file.name.lower()
 
             if name.endswith(".pdf"):
-                contents.append(types.Part.from_bytes(data=data, mime_type="application/pdf"))
+                contents.append(
+                    types.Part.from_bytes(
+                        data=data,
+                        mime_type="application/pdf"
+                    )
+                )
             elif name.endswith((".png", ".jpg", ".jpeg", ".webp")):
                 mime = "image/png" if name.endswith(".png") else "image/jpeg"
-                contents.append(types.Part.from_bytes(data=data, mime_type=mime))
+                contents.append(
+                    types.Part.from_bytes(
+                        data=data,
+                        mime_type=mime
+                    )
+                )
             else:
-                contents.append(f"[첨부 파일 텍스트 전문]\n{data.decode('utf-8', errors='ignore')}")
+                decoded = data.decode("utf-8", errors="ignore")
+                contents.append(f"[첨부 파일 텍스트]\n{decoded}")
+
             has_file = True
 
         if not has_file and not situation.strip():
-            st.warning(t("email_missing_input", "⚠️ PDF 파일을 업로드하거나 상황/공문 내용을 텍스트로 입력해주세요."))
+            st.warning(
+                t(
+                    "email_missing_input",
+                    "⚠️ 메일로 만들 내용을 입력하거나 참고 문서를 업로드해주세요."
+                )
+            )
             return
 
-        system_prompt = (
-            "당신은 비즈니스 이메일 및 공문서 전문 AI 비서입니다.\n"
-            "첨부 문서의 실제 내용을 빠짐없이 분석하여 정중하고 읽기 쉬운 비즈니스 이메일을 작성합니다.\n"
-            "실제 고유 명칭, 날짜, 제출 방법, 세부 항목을 정확히 반영하고 마크다운 기호는 사용하지 않습니다.\n"
-            "반드시 제목과 본문을 구분합니다."
+        selected_modes = expertise_modes or ["일반 비즈니스"]
+        expertise_instruction = "\n".join(
+            f"- {mode}: {expertise_options[mode]}"
+            for mode in selected_modes
         )
 
-        prompt = f"""[사용자 요청 / 추가 지시사항]
-{situation.strip() or "첨부된 문서 내용을 바탕으로 수신자에게 전달할 완성된 이메일을 작성해주세요."}
+        system_prompt = """당신은 글로벌 비즈니스 이메일 전문 AI 비서입니다.
 
-[희망 톤 및 목적]
-{tone_labels[tone_key]}
+사용자가 한국어로 짧게 메모하거나 불완전한 문장을 입력해도,
+의도를 정확히 파악하여 실제 업무에서 바로 보낼 수 있는 완성형 이메일로 작성합니다.
 
-[추가 요청사항]
+작성 원칙:
+1. 사용자가 제공하지 않은 사실, 일정, 수치, 약속, 이름은 임의로 만들지 않습니다.
+2. 장비명, 모델명, Part Name, 회사명, 사람 이름, 약어, 숫자는 원문을 최대한 정확히 보존합니다.
+3. 반도체/기술 모드가 포함되면 엔지니어링 현업 표현을 사용하고 기술적 의미를 임의로 바꾸지 않습니다.
+4. 무역/물류 모드가 포함되면 국제 무역 및 물류 실무에서 자연스러운 표현을 사용합니다.
+5. 마케팅·세일즈 모드가 포함되면 고객 관계와 설득력을 고려하되 과장된 광고 문구는 피합니다.
+6. 여러 전문 모드가 선택되면 서로 충돌하지 않게 하나의 자연스러운 메일 문체로 통합합니다.
+7. 영어 메일은 한국식 직역을 피하고 실제 글로벌 비즈니스에서 자연스러운 문장으로 작성합니다.
+8. 불필요하게 어려운 단어, 과도한 사과, 과장된 공손 표현은 피합니다.
+9. 마크다운 기호(**, # 등)는 사용하지 않습니다.
+10. 결과는 바로 복사하여 사용할 수 있도록 작성합니다.
+
+기본 출력 형식:
+Subject: ...
+Dear ...,
+...
+Best regards,
+...
+
+수신자 이름을 모르면 특정 이름을 만들어내지 말고 'Dear Team,' 또는 상황에 적절한 일반 호칭을 사용합니다.
+사용자가 서명을 제공하지 않았다면 임의의 이름/회사명을 만들지 않습니다."""
+
+        user_request = situation.strip() or (
+            "첨부 문서의 실제 내용을 바탕으로 수신자에게 전달할 이메일을 작성해주세요."
+        )
+
+        prompt = f"""[사용자 메모 / 원문]
+{user_request}
+
+[출력 언어]
+{output_language}
+
+[선택한 업무 전문 모드]
+{expertise_instruction}
+
+[메일 목적]
+{purpose}
+
+[수신 대상]
+{recipient}
+
+[희망 문체]
+{tone_label}
+
+[추가 요청]
 {additional.strip() or "없음"}
 
-첨부 문서의 실제 내용과 일정, 대상자, 제출 항목을 정확히 분석하여 완성본으로 작성해주세요."""
+[작성 지시]
+- 위 정보를 종합해 하나의 완성된 비즈니스 이메일을 작성하세요.
+- 짧은 메모도 문맥을 자연스럽게 연결해 정식 이메일 형식으로 확장하세요.
+- PDF/첨부 문서가 있으면 첨부 내용과 사용자 메모를 함께 참고하세요.
+- 사용자의 추가 요청이 다른 설정과 충돌하면 추가 요청을 우선하되, 사실관계는 변경하지 마세요.
+- 영어 출력 시 Subject와 본문 모두 자연스러운 글로벌 비즈니스 영어로 작성하세요.
+- 한국어 + 영어 병기 선택 시 먼저 한국어 완성본, 그 다음 영어 완성본을 제공합니다.
+"""
 
         contents.append(prompt)
 
-        with st.spinner(t("email_spinner", "AI가 PDF 원본 문서를 정밀 분석하여 이메일을 작성 중입니다...")):
-            result = clean_email_text(get_ai_response(contents, system_prompt))
+        with st.spinner(
+            t(
+                "email_spinner",
+                "AI가 메모와 문서를 분석해 업무 상황에 맞는 정식 이메일을 작성 중입니다..."
+            )
+        ):
+            result = clean_email_text(
+                get_ai_response(contents, system_prompt)
+            )
 
-        st.text_area("", result, height=450, key="email_result_text")
+        st.text_area(
+            "복사해서 바로 사용할 수 있습니다.",
+            result,
+            height=520,
+            key="email_result_text"
+        )
 
 
 # =========================================================
 # 할 일 관리
 # =========================================================
+
 def render_todo_tab(user_id):
     st.markdown(f"### {t('todo_title', '✅ 할 일 관리')}")
     left, right = st.columns([1, 2], gap="large")
