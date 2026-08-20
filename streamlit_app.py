@@ -1,3 +1,4 @@
+from modules.app_settings import get_tabs, update_tab, get_texts, update_text, get_text
 from modules.media_storage import (
     save_media_project,
     update_media_project,
