@@ -1,3 +1,11 @@
+from modules.media_storage import (
+    save_media_project,
+    update_media_project,
+    list_media_projects,
+    load_media_project,
+    save_generated_files
+)
+
 import streamlit as st
 import pandas as pd
 import os
@@ -14,7 +22,8 @@ st.set_page_config(
 )
 if "user_id" not in st.session_state:
     st.session_state.user_id = ""
-
+if "media_project_id" not in st.session_state:
+    st.session_state.media_project_id = None
 if not st.session_state.user_id:
     st.title("🤖 나만의 AI 비서")
     login_name = st.text_input("사용자 이름", placeholder="예: 홍길동")
@@ -388,6 +397,12 @@ with tabs[4]:
 
                         st.session_state.media_analysis = result
                         st.session_state.media_transcript = result.get("transcript", "")
+                        st.session_state.media_project_id = save_media_project(
+                            USER_ID,
+                            result,
+                            analysis_type=analysis_type,
+                            uploaded_file=media_file
+)
                         st.session_state.media_ppt_bytes = None
                         st.session_state.media_pdf_bytes = None
 
