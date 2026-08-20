@@ -12,6 +12,20 @@ TEXT_DEFAULTS = {
     "login_name_warning": ("공통", "사용자 이름 경고", "사용자 이름을 입력해주세요."),
     "admin_tab_label": ("공통", "관리자 탭 이름", "⚙️ 관리자 설정"),
 
+    # 인증
+    "auth_login_tab": ("인증", "로그인 탭", "로그인"),
+    "auth_signup_tab": ("인증", "회원가입 탭", "회원가입"),
+    "auth_id_label": ("인증", "ID 입력 제목", "ID"),
+    "auth_id_placeholder": ("인증", "ID 입력 예시", "예: anthony"),
+    "auth_password_label": ("인증", "PASSWORD 입력 제목", "PASSWORD"),
+    "auth_password_confirm_label": ("인증", "PASSWORD 확인 제목", "PASSWORD 확인"),
+    "auth_display_name_label": ("인증", "이름 입력 제목", "이름"),
+    "auth_display_name_placeholder": ("인증", "이름 입력 예시", "예: 홍길동"),
+    "auth_login_button": ("인증", "로그인 버튼", "로그인"),
+    "auth_signup_button": ("인증", "회원가입 버튼", "회원가입"),
+    "auth_logout_button": ("인증", "로그아웃 버튼", "로그아웃"),
+    "auth_welcome": ("인증", "로그인 사용자 표시", "{name}님"),
+
     # 메인 화면
     "home_pending_title": ("공통", "진행 중 할 일 제목", "📌 오늘 해야 할 일 ({count}건 진행 중)"),
     "home_all_done": ("공통", "할 일 완료 안내", "🎉 현재 진행 중인 할 일이 모두 완료되었습니다!"),
