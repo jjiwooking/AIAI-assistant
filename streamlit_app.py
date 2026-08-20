@@ -503,7 +503,12 @@ with tabs[4]:
                     st.session_state.media_analysis["transcript"] = edited_transcript
                     st.session_state.media_ppt_bytes = None
                     st.session_state.media_pdf_bytes = None
-
+                    if st.session_state.media_project_id:
+                        update_media_project(
+                            USER_ID,
+                            st.session_state.media_project_id,
+                            st.session_state.media_analysis
+            )
                     st.success("수정 내용을 저장했습니다.")
 
             with rebuild_col:
@@ -734,7 +739,13 @@ with tabs[4]:
                             result,
                             report_title=report_title
                         )
-
+                        if st.session_state.media_project_id:
+                            save_generated_files(
+                                USER_ID,
+                                st.session_state.media_project_id,
+                                ppt_bytes=st.session_state.media_ppt_bytes,
+                                pdf_bytes=st.session_state.media_pdf_bytes
+                        )
                     st.success("PPT와 PDF 생성이 완료되었습니다.")
 
                 except Exception as e:
