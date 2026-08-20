@@ -76,7 +76,7 @@ else:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-tabs = st.tabs(["✉️ 이메일 작성", "✅ 할 일 관리", "📊 데이터 분석", "💼 채용 관리"])
+tabs = st.tabs(["✉️ 이메일 작성", "✅ 할 일 관리", "📊 데이터 분석", "💼 채용 관리", "🎙️ 회의·발표 분석"])
 
 # ─────────────────────────────────────────
 # 탭 1: 이메일 작성 (PDF / 공문 변환)
@@ -292,3 +292,463 @@ with tabs[3]:
             st.dataframe(df_jobs, use_container_width=True, hide_index=True)
         else:
             st.info("등록된 채용 정보가 없습니다.")
+# =========================================================
+# 탭 5 : 회의·발표 분석
+# =========================================================
+with tabs[4]:
+    import html
+    import pandas as pd
+    from modules.media_report import analyze_media, rebuild_from_transcript, build_pptx, build_pdf
+
+    st.markdown("### 🎙️ 회의·발표 분석")
+    st.caption("음성·영상 → Transcript → 검토 → 요약 → 시각화 → PPT/PDF")
+
+    # 기본 상태값
+    if "media_analysis" not in st.session_state:
+        st.session_state.media_analysis = None
+    if "media_transcript" not in st.session_state:
+        st.session_state.media_transcript = ""
+    if "media_glossary" not in st.session_state:
+        st.session_state.media_glossary = "Micron, APTD, TCB, RMS, Ejector, Flipper, Auto Tool Change, EFEM, BOC, FAC, T131"
+    if "media_ppt_bytes" not in st.session_state:
+        st.session_state.media_ppt_bytes = None
+    if "media_pdf_bytes" not in st.session_state:
+        st.session_state.media_pdf_bytes = None
+
+    # 디자인
+    st.markdown("""
+    <style>
+    .media-title{font-size:1.05rem;font-weight:700;margin-bottom:0.4rem}
+    .media-yellow{background:#FFF0A6;color:#594700;padding:2px 5px;border-radius:4px;font-weight:700}
+    .media-red{background:#FFD1D1;color:#8B1E1E;padding:2px 5px;border-radius:4px;font-weight:700}
+    .media-transcript{line-height:1.85;padding:16px;border:1px solid #DFE3E8;border-radius:12px;background:#FAFBFC;margin-bottom:10px}
+    </style>
+    """, unsafe_allow_html=True)
+
+    media_tabs = st.tabs([
+        "1️⃣ 업로드·분석",
+        "2️⃣ Transcript 검토",
+        "3️⃣ 요약·Action Item",
+        "4️⃣ 시각화",
+        "5️⃣ PPT/PDF"
+    ])
+
+    # =====================================================
+    # 1. 업로드·분석
+    # =====================================================
+    with media_tabs[0]:
+        left, right = st.columns([1.4, 0.8], gap="large")
+
+        with left:
+            st.markdown('<div class="media-title">음성·영상 파일 업로드</div>', unsafe_allow_html=True)
+
+            media_file = st.file_uploader(
+                "음성 또는 영상 파일",
+                type=["mp3", "wav", "m4a", "aac", "flac", "mp4", "mov", "mpeg", "mpg", "webm"],
+                key="media_file_uploader"
+            )
+
+            analysis_type = st.selectbox(
+                "분석 유형",
+                ["회의록", "발표 요약", "경영진 보고", "고객사 보고", "교육 내용 정리"],
+                key="media_analysis_type"
+            )
+
+            language_mode = st.selectbox(
+                "언어",
+                ["한국어 + 영어 혼용", "한국어 중심", "영어 중심"],
+                key="media_language_mode"
+            )
+
+            glossary_text = st.text_area(
+                "전문용어 사전",
+                value=st.session_state.media_glossary,
+                height=100,
+                help="회사명, 장비명, 약어 등을 쉼표로 구분해 입력하세요.",
+                key="media_glossary_text"
+            )
+            st.session_state.media_glossary = glossary_text
+
+            st.file_uploader(
+                "PPT에 사용할 참고 이미지 (선택)",
+                type=["png", "jpg", "jpeg", "webp"],
+                accept_multiple_files=True,
+                key="media_reference_images"
+            )
+
+            if st.button("🎙️ 음성·영상 분석 시작", type="primary", use_container_width=True, key="btn_media_analyze"):
+                if media_file is None:
+                    st.warning("분석할 음성 또는 영상 파일을 먼저 선택해주세요.")
+                else:
+                    glossary = [item.strip() for item in glossary_text.split(",") if item.strip()]
+
+                    try:
+                        with st.spinner("AI가 음성·영상을 분석하고 있습니다. 긴 영상은 시간이 조금 걸릴 수 있습니다..."):
+                            result = analyze_media(media_file, analysis_type, language_mode, glossary)
+
+                        st.session_state.media_analysis = result
+                        st.session_state.media_transcript = result.get("transcript", "")
+                        st.session_state.media_ppt_bytes = None
+                        st.session_state.media_pdf_bytes = None
+
+                        st.success("분석이 완료되었습니다. 2️⃣ Transcript 검토에서 내용을 확인해주세요.")
+
+                    except Exception as e:
+                        st.error(f"분석 중 오류가 발생했습니다: {e}")
+
+        with right:
+            st.markdown('<div class="media-title">분석 기능</div>', unsafe_allow_html=True)
+
+            st.info(
+                "• 한국어/영어 혼용 Transcript\n"
+                "• 회사 전문용어 자동 반영\n"
+                "• 애매한 표현 색상 표시\n"
+                "• 핵심 내용 자동 요약\n"
+                "• Action Item 자동 추출\n"
+                "• 숫자 및 일정 자동 추출\n"
+                "• 차트 및 Timeline 생성\n"
+                "• PPT/PDF 자동 생성"
+            )
+
+            st.caption("🟡 노란색 = 확인 권장\n🔴 빨간색 = 수정 권장")
+
+    # =====================================================
+    # 2. Transcript 검토
+    # =====================================================
+    with media_tabs[1]:
+        result = st.session_state.media_analysis
+
+        if not result:
+            st.info("먼저 1️⃣ 업로드·분석에서 파일을 분석해주세요.")
+        else:
+            uncertain_terms = result.get("uncertain_terms", [])
+            transcript = st.session_state.media_transcript
+
+            def highlight_transcript(text, uncertain_items):
+                safe_text = html.escape(text)
+
+                for item in sorted(uncertain_items, key=lambda x: len(str(x.get("text", ""))), reverse=True):
+                    word = str(item.get("text", "")).strip()
+
+                    if not word:
+                        continue
+
+                    css_class = "media-red" if item.get("severity") == "red" else "media-yellow"
+                    safe_word = html.escape(word)
+                    safe_text = safe_text.replace(safe_word, f'<span class="{css_class}">{safe_word}</span>')
+
+                return safe_text.replace("\n", "<br>")
+
+            st.markdown("#### 애매한 표현 확인")
+
+            st.markdown(
+                f'<div class="media-transcript">{highlight_transcript(transcript, uncertain_terms)}</div>',
+                unsafe_allow_html=True
+            )
+
+            st.caption("🟡 확인 권장 · 🔴 수정 권장")
+
+            if uncertain_terms:
+                st.markdown("#### AI 교정 후보")
+
+                for index, item in enumerate(uncertain_terms):
+                    col1, col2, col3 = st.columns([1, 1, 2])
+
+                    col1.write(f"**{item.get('text', '')}**")
+                    col2.write(f"→ {item.get('suggestion', '확인 필요')}")
+                    col3.caption(item.get("reason", ""))
+
+                    original = str(item.get("text", "")).strip()
+                    suggestion = str(item.get("suggestion", "")).strip()
+
+                    if original and suggestion:
+                        if st.button(f"'{suggestion}'로 변경", key=f"media_fix_word_{index}"):
+                            st.session_state.media_transcript = st.session_state.media_transcript.replace(original, suggestion)
+                            st.session_state.media_analysis["uncertain_terms"] = [
+                                term for i, term in enumerate(uncertain_terms) if i != index
+                            ]
+                            st.session_state.media_ppt_bytes = None
+                            st.session_state.media_pdf_bytes = None
+                            st.rerun()
+
+            st.markdown("#### Transcript 직접 수정")
+
+            edited_transcript = st.text_area(
+                "필요한 문장을 직접 수정할 수 있습니다.",
+                value=st.session_state.media_transcript,
+                height=380,
+                key="media_transcript_editor"
+            )
+
+            save_col, rebuild_col = st.columns(2)
+
+            with save_col:
+                if st.button("💾 Transcript 수정 저장", use_container_width=True, key="btn_media_save_transcript"):
+                    st.session_state.media_transcript = edited_transcript
+                    st.session_state.media_analysis["transcript"] = edited_transcript
+                    st.session_state.media_ppt_bytes = None
+                    st.session_state.media_pdf_bytes = None
+
+                    st.success("수정 내용을 저장했습니다.")
+
+            with rebuild_col:
+                if st.button("🔄 수정본 기준 다시 정리", type="primary", use_container_width=True, key="btn_media_rebuild"):
+                    glossary = [item.strip() for item in st.session_state.media_glossary.split(",") if item.strip()]
+
+                    try:
+                        with st.spinner("수정한 Transcript를 기준으로 다시 정리하고 있습니다..."):
+                            rebuilt = rebuild_from_transcript(
+                                edited_transcript,
+                                st.session_state.get("media_analysis_type", "회의록"),
+                                glossary
+                            )
+
+                        st.session_state.media_analysis = rebuilt
+                        st.session_state.media_transcript = edited_transcript
+                        st.session_state.media_ppt_bytes = None
+                        st.session_state.media_pdf_bytes = None
+
+                        st.success("수정한 내용 기준으로 다시 정리했습니다.")
+
+                    except Exception as e:
+                        st.error(f"재분석 중 오류가 발생했습니다: {e}")
+
+    # =====================================================
+    # 3. 요약·Action Item
+    # =====================================================
+    with media_tabs[2]:
+        result = st.session_state.media_analysis
+
+        if not result:
+            st.info("먼저 음성 또는 영상 파일을 분석해주세요.")
+        else:
+            st.markdown("#### 핵심 요약")
+
+            summary = result.get("summary", [])
+
+            if summary:
+                for index, item in enumerate(summary, start=1):
+                    st.write(f"**{index}.** {item}")
+            else:
+                st.info("추출된 요약 내용이 없습니다.")
+
+            st.markdown("#### Action Items")
+
+            actions = result.get("action_items", [])
+
+            if actions:
+                action_df = pd.DataFrame(actions)
+
+                for column in ["owner", "task", "due", "status"]:
+                    if column not in action_df.columns:
+                        action_df[column] = ""
+
+                edited_action_df = st.data_editor(
+                    action_df[["owner", "task", "due", "status"]],
+                    use_container_width=True,
+                    num_rows="dynamic",
+                    column_config={
+                        "owner": "담당",
+                        "task": "업무",
+                        "due": "기한",
+                        "status": "상태"
+                    },
+                    key="media_action_editor"
+                )
+
+                result["action_items"] = edited_action_df.to_dict("records")
+                st.session_state.media_analysis = result
+            else:
+                st.info("추출된 Action Item이 없습니다.")
+
+            st.markdown("#### 중요 포인트")
+
+            key_points = result.get("key_points", [])
+
+            if key_points:
+                for item in key_points:
+                    st.write(f"• {item}")
+            else:
+                st.info("추출된 중요 포인트가 없습니다.")
+
+    # =====================================================
+    # 4. 시각화
+    # =====================================================
+    with media_tabs[3]:
+        result = st.session_state.media_analysis
+
+        if not result:
+            st.info("먼저 음성 또는 영상 파일을 분석해주세요.")
+        else:
+            st.markdown("#### 자동 시각화")
+
+            rows = []
+
+            for item in result.get("numbers", []):
+                try:
+                    rows.append({
+                        "항목": item.get("label", ""),
+                        "값": float(item.get("value", 0)),
+                        "단위": item.get("unit", ""),
+                        "설명": item.get("context", "")
+                    })
+                except (TypeError, ValueError):
+                    pass
+
+            if rows:
+                number_df = pd.DataFrame(rows)
+
+                edited_number_df = st.data_editor(
+                    number_df,
+                    use_container_width=True,
+                    num_rows="dynamic",
+                    key="media_number_editor"
+                )
+
+                edited_number_df["값"] = pd.to_numeric(edited_number_df["값"], errors="coerce")
+                valid_chart_df = edited_number_df.dropna(subset=["값"])
+
+                chart_type = st.radio(
+                    "차트 유형",
+                    ["막대그래프", "선그래프", "표"],
+                    horizontal=True,
+                    key="media_chart_type"
+                )
+
+                if not valid_chart_df.empty:
+                    chart_source = valid_chart_df.set_index("항목")[["값"]]
+
+                    if chart_type == "막대그래프":
+                        st.bar_chart(chart_source, use_container_width=True)
+                    elif chart_type == "선그래프":
+                        st.line_chart(chart_source, use_container_width=True)
+                    else:
+                        st.dataframe(valid_chart_df, use_container_width=True, hide_index=True)
+
+                result["numbers"] = [
+                    {
+                        "label": row["항목"],
+                        "value": float(row["값"]),
+                        "unit": row["단위"],
+                        "context": row["설명"]
+                    }
+                    for _, row in valid_chart_df.iterrows()
+                ]
+
+                st.session_state.media_analysis = result
+            else:
+                st.info("음성·영상에서 확인된 수치가 없어 임의의 그래프를 만들지 않았습니다.")
+
+            # Timeline
+            timeline = result.get("timeline", [])
+
+            if timeline:
+                st.markdown("#### Timeline / Process")
+
+                column_count = min(len(timeline), 4)
+                timeline_columns = st.columns(column_count)
+
+                for index, item in enumerate(timeline):
+                    with timeline_columns[index % column_count]:
+                        st.markdown(f"**{item.get('label', '')}**")
+                        st.caption(item.get("detail", ""))
+
+            # 슬라이드 구성 제안
+            slide_plan = result.get("slide_plan", [])
+
+            if slide_plan:
+                st.markdown("#### AI 슬라이드 구성 제안")
+
+                slide_plan_df = pd.DataFrame([
+                    {
+                        "제목": item.get("title", ""),
+                        "레이아웃": item.get("layout", ""),
+                        "내용": " / ".join(item.get("bullets", []))
+                    }
+                    for item in slide_plan
+                ])
+
+                st.dataframe(slide_plan_df, use_container_width=True, hide_index=True)
+
+    # =====================================================
+    # 5. PPT / PDF
+    # =====================================================
+    with media_tabs[4]:
+        result = st.session_state.media_analysis
+
+        if not result:
+            st.info("먼저 음성 또는 영상 파일을 분석해주세요.")
+        else:
+            st.markdown("#### PPT / PDF 생성")
+
+            theme_name = st.selectbox(
+                "PPT 디자인",
+                ["Corporate Basic", "Executive", "Technical Report", "Minimal"],
+                key="media_ppt_theme"
+            )
+
+            report_title = st.text_input(
+                "보고서 제목",
+                value=result.get("title", "회의·발표 분석"),
+                key="media_report_title"
+            )
+
+            st.caption("PPT/PDF를 생성하기 전에 Transcript, 요약, Action Item, 시각화를 최종 확인해주세요.")
+
+            if st.button("✨ PPT / PDF 파일 생성", type="primary", use_container_width=True, key="btn_generate_media_files"):
+                reference_payload = []
+
+                for image_file in st.session_state.get("media_reference_images", []) or []:
+                    try:
+                        reference_payload.append({
+                            "name": image_file.name,
+                            "bytes": image_file.getvalue()
+                        })
+                    except Exception:
+                        pass
+
+                try:
+                    with st.spinner("PPT와 PDF를 생성하고 있습니다..."):
+                        st.session_state.media_ppt_bytes = build_pptx(
+                            result,
+                            theme_name=theme_name,
+                            reference_images=reference_payload
+                        )
+
+                        st.session_state.media_pdf_bytes = build_pdf(
+                            result,
+                            report_title=report_title
+                        )
+
+                    st.success("PPT와 PDF 생성이 완료되었습니다.")
+
+                except Exception as e:
+                    st.session_state.media_ppt_bytes = None
+                    st.session_state.media_pdf_bytes = None
+                    st.error(f"PPT/PDF 생성 중 오류가 발생했습니다: {e}")
+
+            if st.session_state.media_ppt_bytes or st.session_state.media_pdf_bytes:
+                ppt_col, pdf_col = st.columns(2)
+
+                with ppt_col:
+                    if st.session_state.media_ppt_bytes:
+                        st.download_button(
+                            "📥 PPT 다운로드",
+                            data=st.session_state.media_ppt_bytes,
+                            file_name="AIAI_meeting_report.pptx",
+                            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                            use_container_width=True,
+                            key="download_media_ppt"
+                        )
+
+                with pdf_col:
+                    if st.session_state.media_pdf_bytes:
+                        st.download_button(
+                            "📥 PDF 다운로드",
+                            data=st.session_state.media_pdf_bytes,
+                            file_name="AIAI_meeting_report.pdf",
+                            mime="application/pdf",
+                            use_container_width=True,
+                            key="download_media_pdf"
+                        )    
+   
