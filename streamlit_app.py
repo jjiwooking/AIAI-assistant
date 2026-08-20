@@ -325,7 +325,7 @@ with tabs[4]:
         st.session_state.media_pdf_bytes = None
 
 # 👇 여기 추가
-with st.expander("📚 저장된 회의·발표 분석", expanded=False):
+    with st.expander("📚 저장된 회의·발표 분석", expanded=False):
     saved_projects = list_media_projects(USER_ID)
 
     if not saved_projects:
