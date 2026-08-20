@@ -216,7 +216,7 @@ with tabs[1]:
 
     with tcol2:
         show_all = st.checkbox("완료된 항목도 보기", key="chk_show_all_todos")
-        todos = get_todos(USER_ID, show_completed=show_all))
+        todos = get_todos(USER_ID, show_completed=show_all)
         if todos:
             df_todos = pd.DataFrame(todos, columns=["ID", "할 일", "마감일", "우선순위", "완료여부"])
             df_todos["상태"] = df_todos["완료여부"].apply(lambda x: "✅ 완료" if x else "⏳ 진행중")
