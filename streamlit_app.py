@@ -326,7 +326,7 @@ with tabs[4]:
 
 # 👇 여기 추가
     with st.expander("📚 저장된 회의·발표 분석", expanded=False):
-    saved_projects = list_media_projects(USER_ID)
+        saved_projects = list_media_projects(USER_ID)
 
     if not saved_projects:
         st.info("저장된 회의·발표 분석이 없습니다.")
