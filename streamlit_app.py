@@ -8,6 +8,7 @@ from google.genai import types
 from modules.ai_client import get_ai_response
 from modules.app_config import ensure_text_defaults, load_text_map, get_text_value
 from modules.app_settings import get_tabs, update_tab, get_texts, update_text
+from modules.auth_manager import login_user, register_user, restore_user, logout_user
 from modules.media_report import analyze_media, rebuild_from_transcript, build_pptx, build_pdf
 from modules.media_storage import (
     save_media_project, update_media_project, list_media_projects,
@@ -43,6 +44,9 @@ def clean_email_text(text):
 def init_state():
     defaults = {
         "user_id": "",
+        "user_profile": None,
+        "auth_access_token": "",
+        "auth_refresh_token": "",
         "media_project_id": None,
         "media_analysis": None,
         "media_transcript": "",
@@ -50,26 +54,115 @@ def init_state():
         "media_ppt_bytes": None,
         "media_pdf_bytes": None,
     }
+
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
 
 
-def render_login():
+def save_auth_session(auth_data):
+    st.session_state.user_id = auth_data["user_id"]
+    st.session_state.user_profile = auth_data["profile"]
+    st.session_state.auth_access_token = auth_data["access_token"]
+    st.session_state.auth_refresh_token = auth_data["refresh_token"]
+
+
+def clear_auth_session():
+    logout_user(
+        st.session_state.get("auth_access_token", ""),
+        st.session_state.get("auth_refresh_token", "")
+    )
+    st.session_state.user_id = ""
+    st.session_state.user_profile = None
+    st.session_state.auth_access_token = ""
+    st.session_state.auth_refresh_token = ""
+    st.session_state.media_project_id = None
+    st.session_state.media_analysis = None
+    st.session_state.media_transcript = ""
+    st.session_state.media_ppt_bytes = None
+    st.session_state.media_pdf_bytes = None
+
+
+def restore_auth():
+    if st.session_state.user_id:
+        return
+
+    auth_data = restore_user(
+        st.session_state.get("auth_access_token", ""),
+        st.session_state.get("auth_refresh_token", "")
+    )
+
+    if auth_data:
+        save_auth_session(auth_data)
+
+
+def render_auth():
     if st.session_state.user_id:
         return
 
     st.title(t("login_title", "🤖 나만의 AI 비서"))
-    login_name = st.text_input(
-        t("login_name_label", "사용자 이름"),
-        placeholder=t("login_name_placeholder", "예: 홍길동")
-    )
+    login_tab, signup_tab = st.tabs([
+        t("auth_login_tab", "로그인"),
+        t("auth_signup_tab", "회원가입")
+    ])
 
-    if st.button(t("login_start_button", "시작하기"), type="primary"):
-        if login_name.strip():
-            st.session_state.user_id = login_name.strip()
-            st.rerun()
-        st.warning(t("login_name_warning", "사용자 이름을 입력해주세요."))
+    with login_tab:
+        login_id = st.text_input(
+            t("auth_id_label", "ID"),
+            placeholder=t("auth_id_placeholder", "예: anthony"),
+            key="login_id"
+        )
+        password = st.text_input(
+            t("auth_password_label", "PASSWORD"),
+            type="password",
+            key="login_password"
+        )
+
+        if st.button(t("auth_login_button", "로그인"), type="primary", use_container_width=True, key="btn_login"):
+            ok, message, auth_data = login_user(login_id, password)
+
+            if ok:
+                save_auth_session(auth_data)
+                st.rerun()
+
+            st.error(message)
+
+    with signup_tab:
+        display_name = st.text_input(
+            t("auth_display_name_label", "이름"),
+            placeholder=t("auth_display_name_placeholder", "예: 홍길동"),
+            key="signup_display_name"
+        )
+        signup_id = st.text_input(
+            t("auth_id_label", "ID"),
+            placeholder=t("auth_id_placeholder", "예: anthony"),
+            key="signup_id"
+        )
+        signup_password = st.text_input(
+            t("auth_password_label", "PASSWORD"),
+            type="password",
+            key="signup_password"
+        )
+        signup_password_confirm = st.text_input(
+            t("auth_password_confirm_label", "PASSWORD 확인"),
+            type="password",
+            key="signup_password_confirm"
+        )
+
+        if st.button(t("auth_signup_button", "회원가입"), type="primary", use_container_width=True, key="btn_signup"):
+            ok, message, auth_data = register_user(
+                signup_id,
+                signup_password,
+                signup_password_confirm,
+                display_name
+            )
+
+            if ok:
+                save_auth_session(auth_data)
+                st.success(message)
+                st.rerun()
+
+            st.error(message)
 
     st.stop()
 
@@ -88,14 +181,26 @@ def apply_style():
 
 
 def render_header():
-    st.markdown(
-        f'<div class="main-title">🤖 {t("app_title", "나만의 AI 비서")}</div>',
-        unsafe_allow_html=True
-    )
-    st.markdown(
-        f'<div class="sub-title"><i>{t("app_subtitle", "이메일 작성 · 할 일 관리 · 데이터 분석 · 회의·발표 분석")}</i></div>',
-        unsafe_allow_html=True
-    )
+    title_col, user_col = st.columns([5, 1])
+
+    with title_col:
+        st.markdown(
+            f'<div class="main-title">🤖 {t("app_title", "나만의 AI 비서")}</div>',
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            f'<div class="sub-title"><i>{t("app_subtitle", "이메일 작성 · 할 일 관리 · 데이터 분석 · 회의·발표 분석")}</i></div>',
+            unsafe_allow_html=True
+        )
+
+    with user_col:
+        profile = st.session_state.user_profile or {}
+        display_name = profile.get("display_name") or profile.get("login_id") or "User"
+        st.caption(t("auth_welcome", "{name}님").format(name=display_name))
+
+        if st.button(t("auth_logout_button", "로그아웃"), use_container_width=True, key="btn_logout"):
+            clear_auth_session()
+            st.rerun()
 
 
 def render_home(user_id):
@@ -883,16 +988,24 @@ def render_admin_tab():
 # =========================================================
 def main():
     init_state()
-    render_login()
+    restore_auth()
+    render_auth()
 
     user_id = st.session_state.user_id
+    profile = st.session_state.user_profile or {}
+    is_admin = profile.get("role") == "admin"
+
     apply_style()
     render_header()
     render_home(user_id)
 
     tab_config = [tab for tab in get_tabs() if tab.get("is_visible", True)]
     tab_labels = [f"{tab.get('icon', '')} {tab['label']}".strip() for tab in tab_config]
-    tabs = st.tabs(tab_labels + [t("admin_tab_label", "⚙️ 관리자 설정")])
+
+    if is_admin:
+        tab_labels.append(t("admin_tab_label", "⚙️ 관리자 설정"))
+
+    tabs = st.tabs(tab_labels)
     tab_map = {tab["tab_key"]: tabs[index] for index, tab in enumerate(tab_config)}
 
     if "email" in tab_map:
@@ -911,8 +1024,9 @@ def main():
         with tab_map["media"]:
             render_media_tab(user_id)
 
-    with tabs[-1]:
-        render_admin_tab()
+    if is_admin:
+        with tabs[-1]:
+            render_admin_tab()
 
 
 if __name__ == "__main__":
