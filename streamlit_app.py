@@ -12,7 +12,21 @@ st.set_page_config(
     page_icon="🤖",
     layout="wide"
 )
+if "user_id" not in st.session_state:
+    st.session_state.user_id = ""
 
+if not st.session_state.user_id:
+    st.title("🤖 나만의 AI 비서")
+    login_name = st.text_input("사용자 이름", placeholder="예: 홍길동")
+    if st.button("시작하기", type="primary"):
+        if login_name.strip():
+            st.session_state.user_id = login_name.strip()
+            st.rerun()
+        else:
+            st.warning("사용자 이름을 입력해주세요.")
+    st.stop()
+
+USER_ID = st.session_state.user_id
 # 커스텀 스타일 적용 (깔끔한 UI)
 st.markdown("""
 <style>
@@ -47,7 +61,7 @@ st.markdown('<div class="sub-title"><i>이메일 작성 · 할 일 관리 · 데
 # ─────────────────────────────────────────
 # 📌 메인 화면: 진행 중인 할 일 브리핑
 # ─────────────────────────────────────────
-pending_todos = get_todos(show_completed=False)
+pending_todos = get_todos(USER_ID, show_completed=False)
 if pending_todos:
     with st.expander(f"📌 **오늘 해야 할 일 ({len(pending_todos)}건 진행 중)**", expanded=True):
         cols = st.columns(min(len(pending_todos), 3))
@@ -179,7 +193,7 @@ with tabs[1]:
         todo_priority = st.radio("우선순위", ["높음", "보통", "낮음"], index=1, horizontal=True)
         if st.button("➕ 할 일 추가", type="primary", use_container_width=True, key="btn_add_todo"):
             if todo_title.strip():
-                msg = add_todo(todo_title, todo_due, todo_priority)
+                msg = add_todo(USER_ID, todo_title, todo_due, todo_priority)
                 st.success(msg)
                 st.rerun()
             else:
@@ -191,18 +205,18 @@ with tabs[1]:
         bcol1, bcol2 = st.columns(2)
         with bcol1:
             if st.button("✅ 완료 처리", use_container_width=True, key="btn_complete_todo"):
-                msg = complete_todo(todo_id)
+                msg = complete_todo(USER_ID, todo_id)
                 st.success(msg)
                 st.rerun()
         with bcol2:
             if st.button("🗑️ 삭제", use_container_width=True, key="btn_delete_todo"):
-                msg = delete_todo(todo_id)
+                msg = delete_todo(USER_ID, todo_id)
                 st.success(msg)
                 st.rerun()
 
     with tcol2:
         show_all = st.checkbox("완료된 항목도 보기", key="chk_show_all_todos")
-        todos = get_todos(show_completed=show_all)
+        todos = get_todos(USER_ID, show_completed=show_all))
         if todos:
             df_todos = pd.DataFrame(todos, columns=["ID", "할 일", "마감일", "우선순위", "완료여부"])
             df_todos["상태"] = df_todos["완료여부"].apply(lambda x: "✅ 완료" if x else "⏳ 진행중")
@@ -265,14 +279,14 @@ with tabs[3]:
         j_note = st.text_area("메모", placeholder="연봉, 복지, 전형 특이사항 등...", height=100, key="textarea_job_note")
         if st.button("➕ 채용 정보 등록", type="primary", use_container_width=True, key="btn_add_job"):
             if j_company.strip() and j_pos.strip():
-                msg = add_job(j_company, j_pos, j_stat, j_dead, j_note)
+                msg = add_job(USER_ID, j_company, j_pos, j_stat, j_dead, j_note)
                 st.success(msg)
                 st.rerun()
             else:
                 st.warning("기업명과 직무를 입력해주세요.")
 
     with jcol2:
-        jobs = get_jobs()
+        jobs = get_jobs(USER_ID)
         if jobs:
             df_jobs = pd.DataFrame(jobs, columns=["ID", "기업명", "직무", "상태", "마감일", "메모"])
             st.dataframe(df_jobs, use_container_width=True, hide_index=True)
