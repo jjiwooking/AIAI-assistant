@@ -322,7 +322,7 @@ with tabs[4]:
     if "media_ppt_bytes" not in st.session_state:
         st.session_state.media_ppt_bytes = None
     if "media_pdf_bytes" not in st.session_state:
-    st.session_state.media_pdf_bytes = None
+        st.session_state.media_pdf_bytes = None
 
 # 👇 여기 추가
 with st.expander("📚 저장된 회의·발표 분석", expanded=False):
