@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from modules.supabase_client import get_supabase
 
-BUCKET_NAME = "aiai-media"
+BUCKET_NAME = "aiai-files"
 
 def _safe_json(value):
     return json.loads(json.dumps(value, ensure_ascii=False, default=str))
