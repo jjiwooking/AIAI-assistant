@@ -3,6 +3,7 @@ import json
 import mimetypes
 import re
 import uuid
+from datetime import datetime, timezone
 from modules.supabase_client import get_supabase
 
 BUCKET_NAME = "aiai-media"
@@ -74,7 +75,7 @@ def update_media_project(user_id, project_id, analysis):
         "title": analysis.get("title") or "회의·발표 분석",
         "transcript": analysis.get("transcript") or "",
         "analysis": _safe_json(analysis),
-        "updated_at": "now()"
+        "updated_at": datetime.now(timezone.utc).isoformat()
     }).eq("id", project_id).eq("user_id", user_id).execute()
 
 def list_media_projects(user_id, limit=30):
